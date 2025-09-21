@@ -15,18 +15,14 @@ pipeline {
     // This section defines the stages of the CI/CD pipeline.
     stages {
         // Stage 1: Build the Docker Image
-        stage('Build Image') {
+       stage('Build Image') {
             steps {
-                // Use a script block to run multiple commands.
                 script {
-                    echo "Building Docker image..."
-                    // Build the Docker image with a version tag based on the build number.
-                    // This creates a unique image for each successful build.
-                    docker.build("${DOCKER_HUB_USERNAME}/${IMAGE_NAME}:${env.BUILD_NUMBER}")
+                    echo 'Building Docker image...'
+                    sh '/usr/bin/docker build -t hardikdockeraws/nextjs-app .'
                 }
             }
         }
-
         // Stage 2: Push and Deploy Locally
         stage('Push and Deploy Locally') {
             steps {

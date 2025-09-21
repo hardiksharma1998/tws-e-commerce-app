@@ -8,16 +8,19 @@ pipeline {
                 checkout scm
             }
         }
-
-        stage('Install Dependencies') {
+        
+        stage('Install Node.js') {
             steps {
-                echo 'Installing Node.js and npm...'
-                // Install Node.js directly into the workspace to avoid plugin dependency
-                sh 'curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash -'
-                sh 'sudo apt-get install -y nodejs'
-                sh 'node -v'
-                sh 'npm -v'
-                echo 'Dependencies installed successfully.'
+                script {
+                    echo 'Installing Node.js and npm...'
+                    // Download the Node.js setup script
+                    sh 'curl -fsSL https://deb.nodesource.com/setup_18.x -o nodesource_setup.sh'
+                    // Execute the script with sudo
+                    sh 'sudo bash nodesource_setup.sh'
+                    // Install Node.js
+                    sh 'sudo apt-get install -y nodejs'
+                    echo 'Node.js installed successfully.'
+                }
             }
         }
 
@@ -26,7 +29,7 @@ pipeline {
                 script {
                     echo 'Building Docker image...'
                     // Build the Docker image using the Dockerfile in the project root.
-                    sh 'docker build -t hardikdockeraws/nextjs-app .'
+                    sh 'sudo docker build -t hardikdockeraws/nextjs-app .'
                 }
             }
         }
@@ -34,13 +37,12 @@ pipeline {
         stage('Push and Deploy Locally') {
             steps {
                 echo 'Pushing Docker image and deploying locally...'
-
-                // Stop and remove any existing container with the same name.
-                sh 'docker stop nextjs-app || true'
-                sh 'docker rm nextjs-app || true'
+                // Stop and remove any existing container with the same name to avoid conflicts.
+                sh 'sudo docker stop nextjs-app || true'
+                sh 'sudo docker rm nextjs-app || true'
 
                 // Run the new container with the newly built image.
-                sh 'docker run -d --name nextjs-app -p 3000:3000 hardikdockeraws/nextjs-app'
+                sh 'sudo docker run -d --name nextjs-app -p 3000:3000 hardikdockeraws/nextjs-app'
             }
         }
     }

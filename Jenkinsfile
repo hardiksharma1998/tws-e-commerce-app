@@ -23,16 +23,15 @@ pipeline {
                 script {
                     echo 'Building Next.js application and Docker image...'
                     
-                    // --- CLEANUP STEP ADDED HERE ---
-                    // The next two commands ensure a clean slate for npm installation.
-                    // This resolves issues with corrupted cache or lingering files from previous builds.
-                    sh 'rm -rf node_modules'
-                    sh 'npm cache clean --force'
-                    
-                    // These commands run inside the node:18-alpine container.
-                    // The `npm install` step is self-contained.
-                    sh 'npm install'
-                    sh 'npm run build'
+                    // The withEnv block sets an environment variable that tells npm to use a
+                    // cache directory within the workspace, resolving the EACCES permissions error.
+                    withEnv(['NPM_CONFIG_CACHE=./.npm-cache']) {
+                        // These commands run inside the node:18-alpine container.
+                        sh 'rm -rf node_modules'
+                        sh 'npm cache clean --force'
+                        sh 'npm install'
+                        sh 'npm run build'
+                    }
 
                     // Now, we use the Docker CLI inside the container to build the final image on the host.
                     sh 'docker build -t hardikdockeraws/nextjs-app .'

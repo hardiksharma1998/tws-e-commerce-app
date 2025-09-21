@@ -29,7 +29,7 @@ pipeline {
                 script {
                     echo 'Building Docker image...'
                     // Build the Docker image using the Dockerfile in the project root.
-                    sh 'sudo docker build -t hardikdockeraws/nextjs-app .'
+                    sh 'docker build -t hardikdockeraws/nextjs-app .'
                 }
             }
         }
@@ -38,11 +38,11 @@ pipeline {
             steps {
                 echo 'Pushing Docker image and deploying locally...'
                 // Stop and remove any existing container with the same name to avoid conflicts.
-                sh 'sudo docker stop nextjs-app || true'
-                sh 'sudo docker rm nextjs-app || true'
+                sh 'docker stop nextjs-app || true'
+                sh 'docker rm nextjs-app || true'
 
                 // Run the new container with the newly built image.
-                sh 'sudo docker run -d --name nextjs-app -p 3000:3000 hardikdockeraws/nextjs-app'
+                sh 'docker run -d --name nextjs-app -p 3000:3000 hardikdockeraws/nextjs-app'
             }
         }
     }

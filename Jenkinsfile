@@ -1,14 +1,5 @@
 pipeline {
-    // We use a generic agent to run the pipeline on the host machine,
-    // which has access to the Docker daemon.
     agent any
-
-    tools {
-        // Ensure that Node.js and npm are available in the pipeline environment.
-        // You'll need to configure this in Jenkins under "Global Tool Configuration"
-        // and name it "NodeJS_18".
-        nodejs 'NodeJS_18'
-    }
 
     stages {
         stage('Checkout Code') {
@@ -17,7 +8,19 @@ pipeline {
                 checkout scm
             }
         }
-        
+
+        stage('Install Dependencies') {
+            steps {
+                echo 'Installing Node.js and npm...'
+                // Install Node.js directly into the workspace to avoid plugin dependency
+                sh 'curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash -'
+                sh 'sudo apt-get install -y nodejs'
+                sh 'node -v'
+                sh 'npm -v'
+                echo 'Dependencies installed successfully.'
+            }
+        }
+
         stage('Build Image') {
             steps {
                 script {
@@ -32,7 +35,7 @@ pipeline {
             steps {
                 echo 'Pushing Docker image and deploying locally...'
 
-                // Stop and remove any existing container with the same name to avoid conflicts.
+                // Stop and remove any existing container with the same name.
                 sh 'docker stop nextjs-app || true'
                 sh 'docker rm nextjs-app || true'
 

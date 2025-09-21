@@ -42,7 +42,7 @@ pipeline {
                     sh "docker push hardikdockeraws/nextjs-app"
             }
         }
-        
+        }
         stage('Deploy Locally') {
             // This stage also runs on the main Jenkins agent.
             steps {

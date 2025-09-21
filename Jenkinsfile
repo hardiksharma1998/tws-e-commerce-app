@@ -1,122 +1,49 @@
-@Library('Shared') _
-
 pipeline {
-    agent any
-    
-    environment {
-        // Update the main app image name to match the deployment file
-        DOCKER_IMAGE_NAME = 'trainwithshubham/easyshop-app'
-        DOCKER_MIGRATION_IMAGE_NAME = 'trainwithshubham/easyshop-migration'
-        DOCKER_IMAGE_TAG = "${BUILD_NUMBER}"
-        GITHUB_CREDENTIALS = credentials('github-credentials')
-        GIT_BRANCH = "master"
+    // Defines the Docker agent for the entire pipeline.
+    agent {
+        docker { image 'node:18-alpine' }
     }
-    
+
+    // Set environment variables for the project.
+    environment {
+        // Replace with your Docker Hub username or registry.
+        DOCKER_HUB_USERNAME = 'hardikdockeraws'
+        // Replace with your image name.
+        IMAGE_NAME = 'nextjs-app'
+    }
+
+    // This section defines the stages of the CI/CD pipeline.
     stages {
-        stage('Cleanup Workspace') {
+        // Stage 1: Build the Docker Image
+        stage('Build Image') {
             steps {
+                // Use a script block to run multiple commands.
                 script {
-                    clean_ws()
+                    echo "Building Docker image..."
+                    // Build the Docker image with a version tag based on the build number.
+                    // This creates a unique image for each successful build.
+                    docker.build("${DOCKER_HUB_USERNAME}/${IMAGE_NAME}:${env.BUILD_NUMBER}")
                 }
             }
         }
-        
-        stage('Clone Repository') {
+
+        // Stage 2: Push and Deploy Locally
+        stage('Push and Deploy Locally') {
             steps {
                 script {
-                    clone("https://github.com/LondheShubham153/tws-e-commerce-app.git","master")
-                }
-            }
-        }
-        
-        stage('Build Docker Images') {
-            parallel {
-                stage('Build Main App Image') {
-                    steps {
-                        script {
-                            docker_build(
-                                imageName: env.DOCKER_IMAGE_NAME,
-                                imageTag: env.DOCKER_IMAGE_TAG,
-                                dockerfile: 'Dockerfile',
-                                context: '.'
-                            )
-                        }
+                    echo "Pushing Docker image to registry..."
+                    // Push the newly built image to the Docker registry.
+                    docker.withRegistry("https://registry.hub.docker.com", 'docker-hub-credentials') {
+                        docker.image("${DOCKER_HUB_USERNAME}/${IMAGE_NAME}:${env.BUILD_NUMBER}").push()
                     }
-                }
-                
-                stage('Build Migration Image') {
-                    steps {
-                        script {
-                            docker_build(
-                                imageName: env.DOCKER_MIGRATION_IMAGE_NAME,
-                                imageTag: env.DOCKER_IMAGE_TAG,
-                                dockerfile: 'scripts/Dockerfile.migration',
-                                context: '.'
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        
-        stage('Run Unit Tests') {
-            steps {
-                script {
-                    run_tests()
-                }
-            }
-        }
-        
-        stage('Security Scan with Trivy') {
-            steps {
-                script {
-                    // Create directory for results
-                  
-                    trivy_scan()
-                    
-                }
-            }
-        }
-        
-        stage('Push Docker Images') {
-            parallel {
-                stage('Push Main App Image') {
-                    steps {
-                        script {
-                            docker_push(
-                                imageName: env.DOCKER_IMAGE_NAME,
-                                imageTag: env.DOCKER_IMAGE_TAG,
-                                credentials: 'docker-hub-credentials'
-                            )
-                        }
-                    }
-                }
-                
-                stage('Push Migration Image') {
-                    steps {
-                        script {
-                            docker_push(
-                                imageName: env.DOCKER_MIGRATION_IMAGE_NAME,
-                                imageTag: env.DOCKER_IMAGE_TAG,
-                                credentials: 'docker-hub-credentials'
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        
-        // Add this new stage
-        stage('Update Kubernetes Manifests') {
-            steps {
-                script {
-                    update_k8s_manifests(
-                        imageTag: env.DOCKER_IMAGE_TAG,
-                        manifestsPath: 'kubernetes',
-                        gitCredentials: 'github-credentials',
-                        gitUserName: 'Jenkins CI',
-                        gitUserEmail: 'shubhamnath5@gmail.com'
-                    )
+
+                    echo "Deploying on local machine..."
+                    // Stop any existing container with the same name.
+                    sh "docker stop nextjs-app-container || true"
+                    // Remove the stopped container.
+                    sh "docker rm nextjs-app-container || true"
+                    // Run the new container from the newly pushed image.
+                    sh "docker run -d --name nextjs-app-container -p 3000:3000 ${DOCKER_HUB_USERNAME}/${IMAGE_NAME}:${env.BUILD_NUMBER}"
                 }
             }
         }

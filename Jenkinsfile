@@ -19,7 +19,7 @@ pipeline {
             steps {
                 script {
                     echo 'Building Docker image...'
-                    sh '/usr/bin/docker build -t hardikdockeraws/nextjs-app .'
+                    sh 'docker build -t hardikdockeraws/nextjs-app .'
                 }
             }
         }

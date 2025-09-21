@@ -1,55 +1,33 @@
 version: '3.8'
 
 services:
-  mongodb:
-    image: mongo:latest
-    container_name: easyshop-mongodb
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    networks:
-      - easyshop-network
-
-  migration:
-    build:
-      context: .
-      dockerfile: scripts/Dockerfile.migration
-    container_name: easyshop-migration
-    env_file:
-      - .env.local
-    depends_on:
-      mongodb:
-        condition: service_healthy
-    networks:
-      - easyshop-network
-
+  # The Next.js application service
   app:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: easyshop
+      # Use the development stage in the Dockerfile
+      target: base
     ports:
       - "3000:3000"
-    env_file:
-      - .env.local
+    environment:
+      # MongoDB connection URI, using the service name 'db'
+      - MONGO_URI=mongodb://db:27017/nextjs-db
+    volumes:
+      # Mount the current directory into the container to enable hot-reloading
+      - .:/app
+    command: npm run dev
     depends_on:
-      migration:
-        condition: service_completed_successfully
-    networks:
-      - easyshop-network
-    restart: unless-stopped
+      - db
 
-networks:
-  easyshop-network:
-    name: easyshop-network
+  # The MongoDB database service
+  db:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      # Use a named volume for persistent data
+      - mongo-data:/data/db
 
 volumes:
-  mongodb_data:
-    name: mongodb_data
+  # Named volume to persist MongoDB data
+  mongo-data:

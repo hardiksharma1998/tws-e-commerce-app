@@ -11,10 +11,23 @@ pipeline {
     }
 
     stages {
+        stage('Checkout Code') {
+            steps {
+                echo 'Checking out code...'
+                checkout scm
+            }
+        }
+        
         stage('Build Image') {
             steps {
                 script {
                     echo 'Building Next.js application and Docker image...'
+                    
+                    // --- CLEANUP STEP ADDED HERE ---
+                    // The next two commands ensure a clean slate for npm installation.
+                    // This resolves issues with corrupted cache or lingering files from previous builds.
+                    sh 'rm -rf node_modules'
+                    sh 'npm cache clean --force'
                     
                     // These commands run inside the node:18-alpine container.
                     // The `npm install` step is self-contained.

@@ -35,6 +35,11 @@ pipeline {
                 sh 'docker build -t hardikdockeraws/nextjs-app .'
                 // Uncomment the line below to push the image to Docker Hub
                 // sh 'docker push hardikdockeraws/nextjs-app'
+                // This is the new part for Docker login and push
+                // The withCredentials block securely handles your Docker Hub credentials
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
+                    sh "docker login -u ${env.DOCKER_USERNAME} -p ${env.DOCKER_PASSWORD}"
+                    sh "docker push hardikdockeraws/nextjs-app"
             }
         }
         

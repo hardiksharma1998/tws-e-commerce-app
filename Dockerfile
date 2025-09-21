@@ -1,33 +1,36 @@
-# ---- Base Stage ----
-# Use a Node.js image to build the Next.js application
-FROM node:18-alpine AS base
+# Use a Node.js base image for building the application
+FROM node:18-alpine AS builder
+
+# Set the working directory inside the container
 WORKDIR /app
 
 # Copy package.json and package-lock.json and install dependencies
-# This is a key optimization to leverage Docker's layer caching
 COPY package*.json ./
 RUN npm install
 
 # Copy the rest of the application source code
 COPY . .
 
-# Run the Next.js build command
+# Build the Next.js application for production
+# This command generates the optimized production build
 RUN npm run build
 
-# ---- Production Stage ----
-# Use a lightweight Nginx image to serve the application
-FROM nginx:alpine
-WORKDIR /usr/share/nginx/html
+# Use a lean Node.js base image for the final production image
+FROM node:18-alpine
 
-# Copy the built application from the base stage
-# This includes the server, static assets, and next configuration
-COPY --from=base /app/next.config.js /usr/share/nginx/html/
-COPY --from=base /app/public /usr/share/nginx/html/public
-COPY --from=base /app/.next /usr/share/nginx/html/.next
-COPY --from=base /app/nginx.conf /etc/nginx/conf.d/default.conf
+# Set the working directory
+WORKDIR /app
 
-# Expose port 80 for the Nginx server
-EXPOSE 80
+# Copy only the necessary files from the builder stage
+# This keeps the final image size minimal
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json .
+COPY --from=builder /app/public ./public
 
-# The command to run Nginx when the container starts
-CMD ["nginx", "-g", "daemon off;"]
+# Expose the port on which the Next.js app runs
+# Next.js defaults to port 3000
+EXPOSE 3000
+
+# Set the command to start the Next.js server
+CMD ["npm", "start"]

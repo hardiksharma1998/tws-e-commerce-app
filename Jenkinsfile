@@ -1,46 +1,43 @@
 pipeline {
-    // Defines the Docker agent for the entire pipeline.
-    agent {
-        docker { image 'node:18-alpine' }
+    // We use a generic agent to run the pipeline on the host machine,
+    // which has access to the Docker daemon.
+    agent any
+
+    tools {
+        // Ensure that Node.js and npm are available in the pipeline environment.
+        // You'll need to configure this in Jenkins under "Global Tool Configuration"
+        // and name it "NodeJS_18".
+        nodejs 'NodeJS_18'
     }
 
-    // Set environment variables for the project.
-    environment {
-        // Replace with your Docker Hub username or registry.
-        DOCKER_HUB_USERNAME = 'hardikdockeraws'
-        // Replace with your image name.
-        IMAGE_NAME = 'nextjs-app'
-    }
-
-    // This section defines the stages of the CI/CD pipeline.
     stages {
-        // Stage 1: Build the Docker Image
-       stage('Build Image') {
+        stage('Checkout Code') {
+            steps {
+                echo 'Checking out code...'
+                checkout scm
+            }
+        }
+        
+        stage('Build Image') {
             steps {
                 script {
                     echo 'Building Docker image...'
+                    // Build the Docker image using the Dockerfile in the project root.
                     sh 'docker build -t hardikdockeraws/nextjs-app .'
                 }
             }
         }
-        // Stage 2: Push and Deploy Locally
+
         stage('Push and Deploy Locally') {
             steps {
-                script {
-                    echo "Pushing Docker image to registry..."
-                    // Push the newly built image to the Docker registry.
-                    docker.withRegistry("https://registry.hub.docker.com", 'docker-hub-credentials') {
-                        docker.image("${DOCKER_HUB_USERNAME}/${IMAGE_NAME}:${env.BUILD_NUMBER}").push()
-                    }
+                echo 'Pushing Docker image and deploying locally...'
 
-                    echo "Deploying on local machine..."
-                    // Stop any existing container with the same name.
-                    sh "docker stop nextjs-app-container || true"
-                    // Remove the stopped container.
-                    sh "docker rm nextjs-app-container || true"
-                    // Run the new container from the newly pushed image.
-                    sh "docker run -d --name nextjs-app-container -p 3000:3000 ${DOCKER_HUB_USERNAME}/${IMAGE_NAME}:${env.BUILD_NUMBER}"
-                }
+                // Stop and remove any existing container with the same name to avoid conflicts.
+                sh 'docker stop nextjs-app || true'
+                sh 'docker rm nextjs-app || true'
+
+                // Run the new container with the newly built image.
+                sh 'docker run -d --name nextjs-app -p 3000:3000 hardikdockeraws/nextjs-app'
             }
         }
     }

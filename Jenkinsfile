@@ -1,47 +1,41 @@
 pipeline {
-    agent any
+    // We use a Docker container as the build agent.
+    // This provides a clean, consistent environment and avoids all host-related permission issues.
+    agent {
+        docker {
+            image 'node:18-alpine'
+            // The volumes argument is crucial. It mounts the host's Docker socket into the container,
+            // allowing the agent to execute Docker commands on the host.
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
 
     stages {
-        stage('Checkout Code') {
-            steps {
-                echo 'Checking out code...'
-                checkout scm
-            }
-        }
-        
-        stage('Install Node.js') {
-            steps {
-                script {
-                    echo 'Installing Node.js and npm...'
-                    // Download the Node.js setup script
-                    sh 'curl -fsSL https://deb.nodesource.com/setup_18.x -o nodesource_setup.sh'
-                    // Execute the script with sudo
-                    sh 'sudo bash nodesource_setup.sh'
-                    // Install Node.js
-                    sh 'sudo apt-get install -y nodejs'
-                    echo 'Node.js installed successfully.'
-                }
-            }
-        }
-
         stage('Build Image') {
             steps {
                 script {
-                    echo 'Building Docker image...'
-                    // Build the Docker image using the Dockerfile in the project root.
+                    echo 'Building Next.js application and Docker image...'
+                    
+                    // These commands run inside the node:18-alpine container.
+                    // The `npm install` step is self-contained.
+                    sh 'npm install'
+                    sh 'npm run build'
+
+                    // Now, we use the Docker CLI inside the container to build the final image on the host.
                     sh 'docker build -t hardikdockeraws/nextjs-app .'
                 }
             }
         }
-
+        
         stage('Push and Deploy Locally') {
             steps {
                 echo 'Pushing Docker image and deploying locally...'
-                // Stop and remove any existing container with the same name to avoid conflicts.
+                
+                // These commands run on the host system, not inside the container agent.
+                // They are simple Docker commands that the Jenkins user must be able to run.
+                // This requires the Jenkins user to be in the 'docker' group.
                 sh 'docker stop nextjs-app || true'
                 sh 'docker rm nextjs-app || true'
-
-                // Run the new container with the newly built image.
                 sh 'docker run -d --name nextjs-app -p 3000:3000 hardikdockeraws/nextjs-app'
             }
         }
